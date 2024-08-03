@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Caronas</title>
+    <style>
+        /* Estilização básica para a aplicação */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        label, input {
+            margin: 10px 0;
+            display: block;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+        button {
+            margin-top: 10px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+    <h1>Registro de Caronas</h1>
+    <form id="caronaForm">
+        <label for="data">Data:</label>
+        <input type="date" id="data" required>
+        
+        <label for="quantidade">Quantidade de Caronas:</label>
+        <input type="number" id="quantidade" min="1" required>
+        
+        <button type="submit">Lançar Carona</button>
+    </form>
+    
+    <h2>Histórico de Caronas</h2>
+    <table id="historicoTable">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Quantidade</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Lançamentos de caronas serão exibidos aqui -->
+        </tbody>
+    </table>
+    
+    <h2>Filtrar por Mês</h2>
+    <form id="filtroForm">
+        <label for="mes">Mês:</label>
+        <input type="month" id="mes" required>
+        <button type="submit">Filtrar</button>
+    </form>
+    
+    <h3>Resultado</h3>
+    <p id="resultado"></p>
+
+    <script>
+        // Configure o Supabase
+        const supabaseUrl = 'https://taeylgguerunvrqcjqki.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhZXlsZ2d1ZXJ1bnZycWNqcWtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjI3MTU5NDcsImV4cCI6MjAzODI5MTk0N30.8tiWs_gbp0o43Uh1trvT3WWO8mEuveCmlGteGjcVaXU';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Função para salvar carona
+        document.getElementById('caronaForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const data = document.getElementById('data').value;
+            const quantidade = parseInt(document.getElementById('quantidade').value);
+            
+            if (!data || quantidade < 1) return;
+            
+            const { data: carona, error } = await supabase
+                .from('caronas')
+                .insert([{ data, quantidade }]);
+            
+            if (error) {
+                console.error('Erro ao salvar a carona:', error.message);
+                alert('Erro ao salvar a carona.');
+            } else {
+                alert('Carona lançada com sucesso!');
+                mostrarHistorico();
+                document.getElementById('caronaForm').reset();
+            }
+        });
+
+        // Função para exibir o histórico de caronas
+        async function mostrarHistorico() {
+            const { data: caronas, error } = await supabase
+                .from('caronas')
+                .select('*')
+                .order('data', { ascending: false });
+            
+            if (error) {
+                console.error('Erro ao recuperar o histórico:', error.message);
+                return;
+            }
+
+            const tbody = document.querySelector('#historicoTable tbody');
+            tbody.innerHTML = '';
+
+            caronas.forEach((carona, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${carona.data}</td>
+                    <td>${carona.quantidade}</td>
+                    <td>
+                        <button onclick="editarCarona(${carona.id}, '${carona.data}', ${carona.quantidade})">Editar</button>
+                        <button onclick="excluirCarona(${carona.id})">Excluir</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Função para excluir uma carona
+        async function excluirCarona(id) {
+            const { error } = await supabase
+                .from('caronas')
+                .delete()
+                .eq('id', id);
+
+            if (error) {
+                console.error('Erro ao excluir a carona:', error.message);
+                alert('Erro ao excluir a carona.');
+            } else {
+                alert('Carona excluída com sucesso!');
+                mostrarHistorico();
+            }
+        }
+
+        // Função para editar uma carona
+        async function editarCarona(id, data, quantidade) {
+            document.getElementById('data').value = data;
+            document.getElementById('quantidade').value = quantidade;
+            
+            excluirCarona(id);
+        }
+
+        // Carrega o histórico ao carregar a página
+        document.addEventListener('DOMContentLoaded', function() {
+            mostrarHistorico();
+        });
+    </script>
+</body>
+</html>
